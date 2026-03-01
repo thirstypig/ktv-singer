@@ -95,14 +95,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createSong(insertSong: InsertSong): Promise<Song> {
-    const [song] = await db.insert(songs).values(insertSong).returning();
+    const [song] = await db.insert(songs).values(insertSong as typeof songs.$inferInsert).returning();
     return song;
   }
 
   async updateSong(id: string, updates: Partial<InsertSong>): Promise<Song | undefined> {
     const [song] = await db
       .update(songs)
-      .set(updates)
+      .set(updates as Partial<typeof songs.$inferInsert>)
       .where(eq(songs.id, id))
       .returning();
     return song;
