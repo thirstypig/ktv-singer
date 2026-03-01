@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { useMutation } from '@tanstack/react-query';
-import { Search, Sliders, LogIn, LogOut, User } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
+import { Search, Sliders, LogIn, LogOut } from 'lucide-react';
+import { Input } from '@common/components/ui/input';
+import { Button } from '@common/components/ui/button';
+import { useToast } from '@common/hooks/use-toast';
+import { useAuth } from '@features/auth';
+import type { LRCLibSearchResult } from '@features/search';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,16 +14,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-
-interface LRCLibSearchResult {
-  id: number;
-  trackName: string;
-  artistName: string;
-  albumName: string | null;
-  duration: number;
-}
+} from "@common/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@common/components/ui/avatar";
 
 export default function SimpleLanding() {
   const [searchQuery, setSearchQuery] = useState('');
