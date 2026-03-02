@@ -1,6 +1,6 @@
-# Hog The Mic 🎤
+# KTV Singer 🎤
 
-Hog The Mic is a YouTube-powered karaoke web app migrated from Replit to GitHub.
+KTV Singer is a YouTube-powered karaoke app migrated from Replit to GitHub.
 
 ## What this project does
 - Plays YouTube videos for karaoke
