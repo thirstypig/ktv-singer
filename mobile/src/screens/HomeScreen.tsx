@@ -1,0 +1,107 @@
+import { View, Text, FlatList, Image, Pressable, Platform } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useQuery } from "@tanstack/react-query";
+import { Music } from "lucide-react-native";
+import FocusableCard from "@common/components/FocusableCard";
+import { colors } from "@theme/colors";
+import type { Song } from "@shared/schema";
+import type { RootStackParamList } from "@navigation/types";
+
+type Nav = NativeStackNavigationProp<RootStackParamList, "Home">;
+
+export default function HomeScreen() {
+  const navigation = useNavigation<Nav>();
+
+  const { data: songs = [], isLoading } = useQuery<Song[]>({
+    queryKey: ["/api/songs"],
+  });
+
+  const renderSongCard = ({ item }: { item: Song }) => (
+    <FocusableCard
+      className="m-tv-1 p-0 overflow-hidden"
+      style={{ width: 280 }}
+      onPress={() => navigation.navigate("Player", { song: item })}
+    >
+      {item.thumbnailUrl ? (
+        <Image
+          source={{ uri: item.thumbnailUrl }}
+          className="w-full"
+          style={{ height: 160 }}
+          resizeMode="cover"
+        />
+      ) : (
+        <View
+          className="w-full items-center justify-center bg-muted"
+          style={{ height: 160 }}
+        >
+          <Music size={48} color={colors.mutedForeground} />
+        </View>
+      )}
+      <View className="p-tv-2">
+        <Text
+          className="text-tv-sm font-bold text-foreground"
+          numberOfLines={1}
+        >
+          {item.title}
+        </Text>
+        <Text
+          className="text-tv-xs text-muted-foreground mt-1"
+          numberOfLines={1}
+        >
+          {item.artist}
+        </Text>
+      </View>
+    </FocusableCard>
+  );
+
+  return (
+    <View className="flex-1 bg-background px-tv-4 pt-tv-4">
+      {/* Header */}
+      <View className="flex-row items-center mb-tv-4">
+        <View className="w-12 h-12 rounded-tv-md bg-primary/20 items-center justify-center mr-tv-2">
+          <Music size={28} color={colors.primary} />
+        </View>
+        <Text className="text-tv-xl font-bold text-foreground">
+          Song Library
+        </Text>
+
+        <View className="flex-1" />
+
+        <Pressable
+          className="px-tv-3 py-tv-1 rounded-tv-md bg-primary"
+          onPress={() => navigation.navigate("Search")}
+          {...(Platform.isTV && { isTVSelectable: true })}
+        >
+          <Text className="text-tv-sm text-primary-foreground font-bold">
+            Search
+          </Text>
+        </Pressable>
+      </View>
+
+      {/* Song grid */}
+      {isLoading ? (
+        <View className="flex-1 items-center justify-center">
+          <Text className="text-tv-base text-muted-foreground">
+            Loading songs...
+          </Text>
+        </View>
+      ) : songs.length === 0 ? (
+        <View className="flex-1 items-center justify-center">
+          <Text className="text-tv-base text-muted-foreground">
+            No songs yet. Search to add your first song!
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={songs}
+          renderItem={renderSongCard}
+          keyExtractor={(item) => item.id}
+          numColumns={Platform.isTV ? 5 : 2}
+          key={Platform.isTV ? "tv" : "mobile"}
+          contentContainerStyle={{ paddingBottom: 48 }}
+        />
+      )}
+    </View>
+  );
+}

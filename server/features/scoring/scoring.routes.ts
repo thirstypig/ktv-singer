@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { storage } from "../../storage";
-import { isAuthenticated } from "../auth";
+import { isAuthenticated } from "../../middleware";
 import { insertPerformanceSchema } from "@shared/schema";
 
 export function registerScoringRoutes(app: Express) {
