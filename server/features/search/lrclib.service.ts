@@ -59,7 +59,7 @@ export async function searchLyrics(
       throw new Error(`LRCLIB API error: ${response.status}`);
     }
 
-    const data: LRCLibResponse = await response.json();
+    const data = await response.json() as LRCLibResponse;
 
     // Prefer synced lyrics, fallback to plain if needed
     if (data.syncedLyrics) {
@@ -92,7 +92,7 @@ export async function searchLRCLibDatabase(query: string): Promise<LRCLibSearchR
       throw new Error(`LRCLIB search API error: ${response.status}`);
     }
 
-    const data: LRCLibResponse[] = await response.json();
+    const data = await response.json() as LRCLibResponse[];
 
     // Filter to only return songs with synced lyrics
     let songsWithSyncedLyrics = data

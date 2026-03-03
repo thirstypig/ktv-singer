@@ -6,6 +6,7 @@ import { Search } from "lucide-react-native";
 import { useAuthContext } from "@common/auth";
 import { useToast } from "@common/hooks/use-toast";
 import { apiUrl } from "@common/lib/api";
+import { KtvLogo } from "@common/components/KtvLogo";
 import { colors } from "@theme/colors";
 import type { RootStackParamList } from "@navigation/types";
 
@@ -86,7 +87,8 @@ export default function LandingScreen() {
 
       {/* Centered content */}
       <View className="flex-1 items-center justify-center px-tv-8">
-        <Text className="text-tv-3xl font-bold text-foreground mb-tv-4">
+        <KtvLogo size={80} color={colors.primary} />
+        <Text className="text-tv-3xl font-bold text-foreground mt-tv-2 mb-tv-4">
           <Text className="text-primary">KTV</Text> Singer
         </Text>
 

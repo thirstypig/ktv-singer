@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { storage } from "../../storage";
-import { isAuthenticated } from "./auth.middleware";
+import { isAuthenticated } from "../../middleware";
 
 export function registerAuthRoutes(app: Express) {
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
