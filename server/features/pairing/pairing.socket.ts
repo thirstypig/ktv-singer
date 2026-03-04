@@ -10,12 +10,25 @@ import type {
   QueueEntry,
 } from "./pairing.types";
 
+// ── Validation helpers ──────────────────────────────────────────
+
+function validateString(val: unknown, maxLen: number): val is string {
+  return typeof val === "string" && val.length > 0 && val.length <= maxLen;
+}
+
+function validateOptionalString(val: unknown, maxLen: number): val is string | null | undefined {
+  return val === null || val === undefined || (typeof val === "string" && val.length <= maxLen);
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export function setupPairingSocket(httpServer: Server) {
   const io = new SocketIOServer<ClientToServerEvents, ServerToClientEvents>(
     httpServer,
     {
       path: "/socket.io",
       cors: { origin: "*", methods: ["GET", "POST"] },
+      maxHttpBufferSize: 256 * 1024, // 256KB max per message
     },
   );
 
@@ -34,14 +47,35 @@ export function setupPairingSocket(httpServer: Server) {
     socket.on("join_session", (payload) => {
       const { sessionId, role, deviceName } = payload;
 
+      // Validate payload
+      if (!validateString(sessionId, 100) || !UUID_RE.test(sessionId)) {
+        socket.emit("error", { message: "Invalid session ID" });
+        return;
+      }
+      if (role !== "tv" && role !== "singer") {
+        socket.emit("error", { message: "Invalid role" });
+        return;
+      }
+      if (!validateString(deviceName, 100)) {
+        socket.emit("error", { message: "Invalid device name" });
+        return;
+      }
+
       const session = sessions.get(sessionId);
       if (!session) {
         socket.emit("error", { message: "Session not found" });
         return;
       }
 
-      // Only one TV per session
+      // TV role requires matching tvSecret
       if (role === "tv") {
+        const tvSecret = (payload as any).tvSecret;
+        if (!tvSecret || tvSecret !== session.tvSecret) {
+          socket.emit("error", { message: "Invalid TV secret" });
+          return;
+        }
+
+        // Only one TV per session — evict existing
         let existingTVSocketId: string | null = null;
         session.members.forEach((m) => {
           if (m.role === "tv") existingTVSocketId = m.socketId;
@@ -90,6 +124,28 @@ export function setupPairingSocket(httpServer: Server) {
       const info = socketSessionMap.get(socket.id);
       if (!info) return;
 
+      // Validate payload
+      if (!validateString(payload.songId, 100)) {
+        socket.emit("error", { message: "Invalid songId" });
+        return;
+      }
+      if (!validateString(payload.videoId, 20)) {
+        socket.emit("error", { message: "Invalid videoId" });
+        return;
+      }
+      if (!validateString(payload.title, 200)) {
+        socket.emit("error", { message: "Invalid title" });
+        return;
+      }
+      if (!validateString(payload.artist, 200)) {
+        socket.emit("error", { message: "Invalid artist" });
+        return;
+      }
+      if (!validateOptionalString(payload.thumbnailUrl, 500)) {
+        socket.emit("error", { message: "Invalid thumbnailUrl" });
+        return;
+      }
+
       const session = sessions.get(info.sessionId);
       if (!session) return;
 
@@ -131,6 +187,11 @@ export function setupPairingSocket(httpServer: Server) {
       const info = socketSessionMap.get(socket.id);
       if (!info) return;
 
+      if (!validateString(payload.queueId, 100)) {
+        socket.emit("error", { message: "Invalid queueId" });
+        return;
+      }
+
       const session = sessions.get(info.sessionId);
       if (!session) return;
 
@@ -143,6 +204,15 @@ export function setupPairingSocket(httpServer: Server) {
     socket.on("reorder_queue", (payload) => {
       const info = socketSessionMap.get(socket.id);
       if (!info) return;
+
+      if (!validateString(payload.queueId, 100)) {
+        socket.emit("error", { message: "Invalid queueId" });
+        return;
+      }
+      if (typeof payload.newIndex !== "number" || !Number.isInteger(payload.newIndex) || payload.newIndex < 0) {
+        socket.emit("error", { message: "Invalid newIndex" });
+        return;
+      }
 
       const session = sessions.get(info.sessionId);
       if (!session) return;
@@ -179,6 +249,11 @@ export function setupPairingSocket(httpServer: Server) {
     socket.on("audio_chunk", (data) => {
       const info = socketSessionMap.get(socket.id);
       if (!info) return;
+
+      // Cap audio chunk size at 64KB
+      const chunkSize = Buffer.isBuffer(data) ? data.length : typeof data === "string" ? (data as string).length : 0;
+      if (chunkSize > 65_536) return;
+
       socket.to(`session:${info.sessionId}`).emit("audio_chunk", data);
     });
 
@@ -202,12 +277,14 @@ export function setupPairingSocket(httpServer: Server) {
     socket.on("score_update", (data) => {
       const info = socketSessionMap.get(socket.id);
       if (!info) return;
+      if (typeof data !== "string" || data.length > 10_240) return;
       socket.to(`session:${info.sessionId}`).emit("score_update", data);
     });
 
     socket.on("final_score", (data) => {
       const info = socketSessionMap.get(socket.id);
       if (!info) return;
+      if (typeof data !== "string" || data.length > 10_240) return;
       socket.to(`session:${info.sessionId}`).emit("final_score", data);
     });
 

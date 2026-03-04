@@ -11,6 +11,11 @@ import { registerStreamingRoutes } from "./features/streaming";
 import { registerPairingRoutes, setupPairingSocket } from "./features/pairing";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Health check (no auth)
+  app.get("/api/health", (_req, res) => {
+    res.json({ status: "ok", uptime: process.uptime() });
+  });
+
   // Setup authentication (must come first — installs session + passport middleware)
   await setupAuth(app);
 

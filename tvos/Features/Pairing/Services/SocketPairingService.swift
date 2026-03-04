@@ -28,11 +28,12 @@ final class SocketPairingService: ObservableObject {
     private var manager: SocketManager?
     private var socket: SocketIOClient?
     private(set) var currentSessionId: String?
+    private var currentTvSecret: String?
 
     // MARK: - Public API
 
     /// Connect to the Express server and join a session as the TV
-    func connect(serverURL: String, sessionId: String) {
+    func connect(serverURL: String, sessionId: String, tvSecret: String) {
         disconnect()
 
         guard let url = URL(string: serverURL) else {
@@ -41,6 +42,7 @@ final class SocketPairingService: ObservableObject {
         }
 
         currentSessionId = sessionId
+        currentTvSecret = tvSecret
 
         manager = SocketManager(socketURL: url, config: [
             .forceWebsockets(true),
@@ -59,23 +61,27 @@ final class SocketPairingService: ObservableObject {
                 self.isConnected = true
                 self.error = nil
 
-                // Join the session as TV
+                // Join the session as TV (with secret for auth)
                 socket.emit("join_session", [
                     "sessionId": sessionId,
                     "role": "tv",
-                    "deviceName": "Apple TV"
+                    "deviceName": "Apple TV",
+                    "tvSecret": tvSecret
                 ])
             }
         }
 
         socket.on(clientEvent: .reconnect) { [weak self] _, _ in
             Task { @MainActor in
-                guard let self = self, let sid = self.currentSessionId else { return }
+                guard let self = self,
+                      let sid = self.currentSessionId,
+                      let secret = self.currentTvSecret else { return }
                 // Re-join the session room after reconnect
                 socket.emit("join_session", [
                     "sessionId": sid,
                     "role": "tv",
-                    "deviceName": "Apple TV"
+                    "deviceName": "Apple TV",
+                    "tvSecret": secret
                 ])
             }
         }
@@ -170,6 +176,7 @@ final class SocketPairingService: ObservableObject {
         isConnected = false
         singers = []
         currentSessionId = nil
+        currentTvSecret = nil
         error = nil
     }
 }

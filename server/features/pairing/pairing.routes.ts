@@ -1,5 +1,5 @@
 import type { Express } from "express";
-import { randomUUID } from "crypto";
+import { randomUUID, randomBytes } from "crypto";
 import type { PairingSession } from "./pairing.types";
 
 /** In-memory session store — shared with pairing.socket.ts */
@@ -19,14 +19,52 @@ function pruneExpired() {
   expired.forEach((id) => sessions.delete(id));
 }
 
+// ── Rate limiting ─────────────────────────────────────────────
+const RATE_LIMIT_WINDOW = 60_000; // 1 minute
+const RATE_LIMIT_MAX = 10; // max sessions per IP per window
+const MAX_TOTAL_SESSIONS = 100;
+const ipRequestLog = new Map<string, number[]>();
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const timestamps = ipRequestLog.get(ip) || [];
+  const recent = timestamps.filter((t) => now - t < RATE_LIMIT_WINDOW);
+  ipRequestLog.set(ip, recent);
+  return recent.length >= RATE_LIMIT_MAX;
+}
+
+function recordRequest(ip: string) {
+  const timestamps = ipRequestLog.get(ip) || [];
+  timestamps.push(Date.now());
+  ipRequestLog.set(ip, timestamps);
+}
+
 export function registerPairingRoutes(app: Express) {
   /** POST /api/pairing/sessions — create a new ephemeral session */
-  app.post("/api/pairing/sessions", (_req, res) => {
+  app.post("/api/pairing/sessions", (req, res) => {
     pruneExpired();
 
+    const ip = req.ip || req.socket.remoteAddress || "unknown";
+
+    // Rate limit per IP
+    if (isRateLimited(ip)) {
+      res.status(429).json({ message: "Too many sessions created. Try again later." });
+      return;
+    }
+
+    // Global session cap
+    if (sessions.size >= MAX_TOTAL_SESSIONS) {
+      res.status(503).json({ message: "Server at capacity. Try again later." });
+      return;
+    }
+
+    recordRequest(ip);
+
     const id = randomUUID();
+    const tvSecret = randomBytes(16).toString("hex");
     const session: PairingSession = {
       id,
+      tvSecret,
       createdAt: Date.now(),
       members: new Map(),
       queue: [],
@@ -34,7 +72,7 @@ export function registerPairingRoutes(app: Express) {
     };
     sessions.set(id, session);
 
-    res.json({ sessionId: id });
+    res.json({ sessionId: id, tvSecret });
   });
 
   /** GET /api/pairing/sessions/:id — check if a session exists */

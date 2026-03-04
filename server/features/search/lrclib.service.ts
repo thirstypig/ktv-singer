@@ -49,6 +49,7 @@ export async function searchLyrics(
       headers: {
         'User-Agent': 'Karaoke-Stage/1.0',
       },
+      signal: AbortSignal.timeout(5000),
     });
 
     if (!response.ok) {
@@ -86,6 +87,7 @@ export async function searchLRCLibDatabase(query: string): Promise<LRCLibSearchR
       headers: {
         'User-Agent': 'Karaoke-Stage/1.0',
       },
+      signal: AbortSignal.timeout(5000),
     });
 
     if (!response.ok) {

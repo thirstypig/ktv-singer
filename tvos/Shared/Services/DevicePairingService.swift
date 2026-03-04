@@ -95,7 +95,8 @@ final class DevicePairingService: ObservableObject {
             }
 
             guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let sid = json["sessionId"] as? String else {
+                  let sid = json["sessionId"] as? String,
+                  let secret = json["tvSecret"] as? String else {
                 error = .connectionFailed
                 isLoading = false
                 return
@@ -104,6 +105,7 @@ final class DevicePairingService: ObservableObject {
             sessionId = sid
 
             // Generate QR code: { serverURL, sessionId }
+            // Note: tvSecret is NOT included in QR code — singers don't need it
             let payload: [String: String] = [
                 "serverURL": apiClient.baseURL,
                 "sessionId": sid
@@ -115,8 +117,8 @@ final class DevicePairingService: ObservableObject {
                 error = .qrGenerationFailed
             }
 
-            // Connect socket.io as the TV
-            socketService.connect(serverURL: apiClient.baseURL, sessionId: sid)
+            // Connect socket.io as the TV (with secret for TV role auth)
+            socketService.connect(serverURL: apiClient.baseURL, sessionId: sid, tvSecret: secret)
 
             isLoading = false
         } catch {

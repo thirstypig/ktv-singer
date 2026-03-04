@@ -8,7 +8,7 @@ export function registerStreamingRoutes(app: Express) {
     try {
       const { videoId } = req.params;
 
-      if (!videoId || videoId.length < 5 || videoId.length > 20) {
+      if (!videoId || !/^[a-zA-Z0-9][a-zA-Z0-9_-]{4,19}$/.test(videoId)) {
         return res.status(400).json({ error: "Invalid video ID" });
       }
 

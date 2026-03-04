@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import { execFile } from "child_process";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
@@ -72,6 +73,18 @@ app.use((req, res, next) => {
   } else {
     serveStatic(app);
   }
+
+  // Check for yt-dlp availability (non-fatal)
+  await new Promise<void>((resolve) => {
+    execFile("yt-dlp", ["--version"], { timeout: 5000 }, (err, stdout) => {
+      if (err) {
+        log(`WARNING: yt-dlp not found — streaming will not work. Install with: brew install yt-dlp`);
+      } else {
+        log(`yt-dlp version: ${stdout.trim()}`);
+      }
+      resolve();
+    });
+  });
 
   // Serve both the API and the client on the configured port
   const port = parseInt(process.env.PORT || '3000', 10);

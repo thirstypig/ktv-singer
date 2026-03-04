@@ -1,6 +1,7 @@
 /** Ephemeral pairing session (in-memory, no DB) */
 export interface PairingSession {
   id: string;
+  tvSecret: string;
   createdAt: number;
   members: Map<string, SessionMember>;
   queue: QueueEntry[];
@@ -63,6 +64,7 @@ export interface JoinSessionPayload {
   sessionId: string;
   role: "tv" | "singer";
   deviceName: string;
+  tvSecret?: string;
 }
 
 /** Server → Client: a singer connected */
