@@ -1,5 +1,7 @@
 import { io, type Socket } from "socket.io-client";
 
+export type { Socket };
+
 let socket: Socket | null = null;
 
 /** Connect to the Express server's /pairing namespace */

@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { Platform } from "react-native";
 import { connectSocket, disconnectSocket, getSocket } from "../utils/socketClient";
-import type { Socket } from "socket.io-client";
+import type { Socket } from "../utils/socketClient";
 import type {
   QRPayload,
   PairingStatus,
@@ -11,6 +11,51 @@ import type {
 
 const deviceName =
   Platform.OS === "ios" ? "iPhone" : Platform.OS === "android" ? "Android" : "Device";
+
+interface PairingSetters {
+  setStatus: (s: PairingStatus) => void;
+  setSessionId: (id: string | null) => void;
+  setSessionState: (state: SessionStatePayload | null) => void;
+  setErrorMessage: (msg: string | null) => void;
+}
+
+function attachSocketListeners(
+  socket: Socket,
+  targetSessionId: string,
+  { setStatus, setSessionId, setSessionState, setErrorMessage }: PairingSetters,
+) {
+  socket.on("connect", () => {
+    socket.emit("join_session", {
+      sessionId: targetSessionId,
+      role: "singer",
+      deviceName,
+    });
+  });
+
+  socket.on("paired", (data: PairedPayload) => {
+    setStatus("paired");
+    setSessionId(data.sessionId);
+  });
+
+  socket.on("session_state", (state: SessionStatePayload) => {
+    setSessionState(state);
+  });
+
+  socket.on("error", (err: { message: string }) => {
+    setStatus("error");
+    setErrorMessage(err.message);
+  });
+
+  socket.on("connect_error", () => {
+    setStatus("error");
+    setErrorMessage("Could not connect to server");
+  });
+
+  socket.on("disconnect", () => {
+    setStatus("idle");
+    setSessionState(null);
+  });
+}
 
 export function usePairing() {
   const [status, setStatus] = useState<PairingStatus>(() => {
@@ -28,40 +73,7 @@ export function usePairing() {
   // PairingProvider stays mounted for the entire session, so there is no
   // unmount-triggered teardown needed.
 
-  /** Attach shared socket event listeners (paired, session_state, error, etc.) */
-  function attachSocketListeners(socket: Socket, targetSessionId: string) {
-    socket.on("connect", () => {
-      socket.emit("join_session", {
-        sessionId: targetSessionId,
-        role: "singer" as const,
-        deviceName,
-      });
-    });
-
-    socket.on("paired", (data: PairedPayload) => {
-      setStatus("paired");
-      setSessionId(data.sessionId);
-    });
-
-    socket.on("session_state", (state: SessionStatePayload) => {
-      setSessionState(state);
-    });
-
-    socket.on("error", (err: { message: string }) => {
-      setStatus("error");
-      setErrorMessage(err.message);
-    });
-
-    socket.on("connect_error", () => {
-      setStatus("error");
-      setErrorMessage("Could not connect to server");
-    });
-
-    socket.on("disconnect", () => {
-      setStatus("idle");
-      setSessionState(null);
-    });
-  }
+  const setters: PairingSetters = { setStatus, setSessionId, setSessionState, setErrorMessage };
 
   /** Handle a scanned QR code result */
   const handleQRScanned = useCallback(async (qrData: string) => {
@@ -78,7 +90,7 @@ export function usePairing() {
       setSessionId(payload.sessionId);
 
       const socket = connectSocket(payload.serverURL);
-      attachSocketListeners(socket, payload.sessionId);
+      attachSocketListeners(socket, payload.sessionId, setters);
     } catch {
       setStatus("error");
       setErrorMessage("Invalid QR code format");
@@ -100,7 +112,7 @@ export function usePairing() {
       setSessionId(newSessionId);
 
       const socket = connectSocket(serverBaseUrl);
-      attachSocketListeners(socket, newSessionId);
+      attachSocketListeners(socket, newSessionId, setters);
     } catch {
       setStatus("error");
       setErrorMessage("Failed to create session");
