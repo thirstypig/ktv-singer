@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { getSocket, onSocketChange } from "../utils/socketClient";
-import type { Socket } from "socket.io-client";
+import { getSocket } from "../utils/socketClient";
 
 export interface QueueEntry {
   queueId: string;
@@ -24,18 +23,13 @@ export function useQueue() {
     currentlyPlaying: null,
     upcoming: [],
   });
-  const [currentSocket, setCurrentSocket] = useState<Socket | null>(getSocket);
+  const [isPaired, setIsPaired] = useState(() => getSocket()?.connected ?? false);
 
-  // Track socket availability reactively
+  // Register queue + connection listeners on mount.
+  // Socket already exists by the time PairingProvider mounts (PairScreen connects first).
   useEffect(() => {
-    return onSocketChange((s) => {
-      setCurrentSocket(s);
-    });
-  }, []);
-
-  // Register queue listeners whenever socket changes
-  useEffect(() => {
-    if (!currentSocket) return;
+    const socket = getSocket();
+    if (!socket) return;
 
     const handleQueueUpdated = (data: {
       currentlyPlaying: QueueEntry | null;
@@ -54,14 +48,24 @@ export function useQueue() {
       }));
     };
 
-    currentSocket.on("queue_updated", handleQueueUpdated);
-    currentSocket.on("play_song", handlePlaySong);
+    const handleConnect = () => setIsPaired(true);
+    const handleDisconnect = () => setIsPaired(false);
+
+    // Set initial state from current connection
+    setIsPaired(socket.connected);
+
+    socket.on("queue_updated", handleQueueUpdated);
+    socket.on("play_song", handlePlaySong);
+    socket.on("connect", handleConnect);
+    socket.on("disconnect", handleDisconnect);
 
     return () => {
-      currentSocket.off("queue_updated", handleQueueUpdated);
-      currentSocket.off("play_song", handlePlaySong);
+      socket.off("queue_updated", handleQueueUpdated);
+      socket.off("play_song", handlePlaySong);
+      socket.off("connect", handleConnect);
+      socket.off("disconnect", handleDisconnect);
     };
-  }, [currentSocket]);
+  }, []);
 
   const addToQueue = useCallback(
     (song: {
@@ -95,10 +99,6 @@ export function useQueue() {
     if (!socket) return;
     socket.emit("reorder_queue", { queueId, newIndex });
   }, []);
-
-  const isPaired = useMemo(() => {
-    return currentSocket?.connected ?? false;
-  }, [currentSocket]);
 
   const isQueueFull = useMemo(() => {
     const total =
