@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { Platform } from "react-native";
-import { connectSocket, disconnectSocket, getSocket, onSocketChange } from "../utils/socketClient";
+import { connectSocket, disconnectSocket, getSocket } from "../utils/socketClient";
 import type {
   QRPayload,
   PairingStatus,
@@ -20,15 +20,9 @@ export function usePairing() {
     null,
   );
 
-  // Track socket changes reactively (no destructive cleanup)
-  useEffect(() => {
-    return onSocketChange((s) => {
-      if (!s) {
-        setStatus("idle");
-        setSessionState(null);
-      }
-    });
-  }, []);
+  // No cleanup effect — socket lifecycle is managed explicitly via disconnect().
+  // PairingProvider stays mounted for the entire session, so there is no
+  // unmount-triggered teardown needed.
 
   /** Handle a scanned QR code result */
   const handleQRScanned = useCallback(async (qrData: string) => {
@@ -159,6 +153,5 @@ export function usePairing() {
     handleQRScanned,
     createSession,
     disconnect,
-    socket: getSocket(),
   };
 }
