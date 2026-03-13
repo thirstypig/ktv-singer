@@ -1,25 +1,2 @@
-node_modules
-.env
 .DS_Store
-dist
-build
 .claude/
-
-# Mobile
-ktv-singer-app/.expo/
-ktv-singer-app/ios/
-ktv-singer-app/android/
-
-# Temp build artifacts
-*.player-script.js
-
-# tvOS
-ktv-singer-tvos/.build/
-ktv-singer-tvos/KTVSinger.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
-ktv-singer-tvos/KTVSinger.xcodeproj/project.xcworkspace/xcuserdata/
-ktv-singer-tvos/KTVSinger.xcodeproj/xcuserdata/
-ktv-singer-tvos/Package.resolved
-
-# Port registry files
-MASTER-PORTS.md
-ktv-singer-PORTS.md

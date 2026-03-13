@@ -1,7 +1,0 @@
-.build/
-KTVSinger.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
-KTVSinger.xcodeproj/project.xcworkspace/xcuserdata/
-KTVSinger.xcodeproj/xcuserdata/
-Package.resolved
-.DS_Store
-.claude/
